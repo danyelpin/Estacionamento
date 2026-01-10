@@ -41,7 +41,7 @@
                 @Html.DisplayFor(modelItem => item.HoraSaida)
             </td>
             <td>
-                @Html.DisplayFor(modelItem => item.ValorTotal)
+                @(item.ValorTotal.HasValue ? item.ValorTotal.Value.ToString("C") : "R$ 0,00")
             </td>
             <td>
                 <a asp-action="Edit" asp-route-id="@item.Id">Edit</a> |

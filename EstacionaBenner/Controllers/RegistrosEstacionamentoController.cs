@@ -88,7 +88,7 @@ namespace EstacionaBenner.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id")] RegistroEstacionamento registroEstacionamento)
+        public async Task<IActionResult> Edit(int id, RegistroEstacionamento registroEstacionamento)
         {
             var localizaCarro = await _context.RegistrosEstacionamento.AsNoTracking().FirstOrDefaultAsync(m => m.Id == id);
             
@@ -99,6 +99,49 @@ namespace EstacionaBenner.Controllers
             registroEstacionamento.HoraSaida = DateTime.Now;
             
             if(ModelState.IsValid){
+                
+                var tabela = await _context.TabelaPreco.FirstOrDefaultAsync(t => t.Ativo &&
+                    registroEstacionamento.HoraSaida >= t.InicioVigencia &&
+                    registroEstacionamento.HoraEntrada <= t.FimVigencia);
+                
+                
+
+                if (tabela != null)
+                {
+                    TimeSpan tempoPermanencia = registroEstacionamento.HoraSaida.Value - registroEstacionamento.HoraEntrada;
+                    
+                    int horasInteiras = (int)tempoPermanencia.TotalHours;
+                    
+                    int minutosRestantes = tempoPermanencia.Minutes;
+                    
+                    double totalHoras;
+
+                    if (minutosRestantes > 10)
+                    {
+                        totalHoras = horasInteiras + 1;
+                    }
+                    else
+                    {
+                        totalHoras = (horasInteiras == 0) ? 1:horasInteiras;
+                    }
+                    
+                    if (totalHoras <= 1)
+                    {
+                        registroEstacionamento.ValorTotal = tabela.ValorHoraInicial;
+                    }
+                    else
+                    {
+                        decimal horasAdicionais = (decimal)(totalHoras - 1);
+                        registroEstacionamento.ValorTotal = tabela.ValorHoraInicial + (horasAdicionais*tabela.ValorHoraAdicional);
+                    }
+                    
+                }
+                else
+                {
+                    ModelState.AddModelError("", "Nao foi encontrado uma tabela de precos ativa");
+                    
+                    return View(registroEstacionamento);
+                }
                 
                 _context.Update(registroEstacionamento);
                 await _context.SaveChangesAsync();
